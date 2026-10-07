@@ -16,8 +16,8 @@ spec:
       helm:
         releaseName: frontend
         valueFiles:
-          - $values/apps/frontend/values.yaml
-    - repoURL: https://github.com/juanpa1999/argocd.git
+          - $values/frontend/values.yaml
+    - repoURL: https://github.com/juanpa1999/helm-chart.git
       targetRevision: main
       ref: values
   destination:

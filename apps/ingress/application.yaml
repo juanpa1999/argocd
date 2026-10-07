@@ -18,8 +18,8 @@ spec:
       helm:
         releaseName: ingress
         valueFiles:
-          - $values/apps/ingress/values.yaml
-    - repoURL: https://github.com/juanpa1999/argocd.git
+          - $values/ingress/values.yaml
+    - repoURL: https://github.com/juanpa1999/helm-chart.git
       targetRevision: main
       ref: values
   destination:
