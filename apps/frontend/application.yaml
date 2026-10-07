@@ -1,0 +1,31 @@
+# Chart frontend desde el Helm repo publicado (versión fija) + overrides de ./values.yaml.
+# Wave 2: después del backend.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: frontend
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  sources:
+    - repoURL: https://juanpa1999.github.io/helm-chart
+      chart: frontend
+      targetRevision: 0.2.0
+      helm:
+        releaseName: frontend
+        valueFiles:
+          - $values/apps/frontend/values.yaml
+    - repoURL: https://github.com/juanpa1999/argocd.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sensores
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

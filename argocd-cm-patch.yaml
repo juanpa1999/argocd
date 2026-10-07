@@ -1,0 +1,17 @@
+# Restaura el health check de las Application (quitado en ArgoCD 1.8) para que
+# las sync-waves de root esperen a que cada app esté Healthy antes de la siguiente.
+#   kubectl -n argocd patch configmap argocd-cm --patch-file argocd-cm-patch.yaml
+data:
+  resource.customizations.health.argoproj.io_Application: |
+    hs = {}
+    hs.status = "Progressing"
+    hs.message = ""
+    if obj.status ~= nil then
+      if obj.status.health ~= nil then
+        hs.status = obj.status.health.status
+        if obj.status.health.message ~= nil then
+          hs.message = obj.status.health.message
+        end
+      end
+    end
+    return hs

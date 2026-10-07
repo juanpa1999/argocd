@@ -1,0 +1,9 @@
+# Overrides sobre los defaults del chart db (versión en application.yaml).
+# Solo pon aquí lo que cambia respecto al values.yaml del chart.
+
+image:
+  tag: latest   # fija un tag real: ArgoCD no redespliega si el tag no cambia en git
+
+# Con selfHeal, un pod recreado sin PVC pierde los datos (y el seed).
+persistence:
+  enabled: false

@@ -1,0 +1,31 @@
+# Chart db desde el Helm repo publicado (versión fija) + overrides de ./values.yaml.
+# Wave 0: primero la DB.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: db
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  sources:
+    - repoURL: https://juanpa1999.github.io/helm-chart
+      chart: db
+      targetRevision: 0.1.0
+      helm:
+        releaseName: db
+        valueFiles:
+          - $values/apps/db/values.yaml
+    - repoURL: https://github.com/juanpa1999/argocd.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sensores
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

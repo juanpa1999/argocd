@@ -1,0 +1,4 @@
+# Overrides sobre los defaults del chart frontend (versión en application.yaml).
+
+image:
+  tag: latest   # fija un tag real: ArgoCD no redespliega si el tag no cambia en git

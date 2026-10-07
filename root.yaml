@@ -1,0 +1,26 @@
+# Único manifiesto que se aplica a mano, una sola vez:
+#   kubectl apply -f root.yaml
+# ArgoCD lee apps/*/application.yaml y crea una Application por chart
+# (db, backend, frontend, ingress). Los values.yaml de cada carpeta NO se aplican
+# como manifiestos: los consume cada Application vía multi-source ($values).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/juanpa1999/argocd.git
+    targetRevision: main
+    path: apps
+    directory:
+      recurse: true
+      include: "*/application.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

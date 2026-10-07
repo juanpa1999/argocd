@@ -1,0 +1,4 @@
+# Overrides sobre los defaults del chart ingress (versión en application.yaml).
+
+# Debe coincidir con REACT_APP_API_URL (frontend) y NGROK/CORS (backend).
+host: pablodevops.store
