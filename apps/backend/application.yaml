@@ -18,6 +18,7 @@ spec:
         releaseName: backend
         valueFiles:
           - $values/backend/values.yaml
+          - $values/backend/values-local.yaml
     - repoURL: https://github.com/juanpa1999/helm-chart.git
       targetRevision: main
       ref: values

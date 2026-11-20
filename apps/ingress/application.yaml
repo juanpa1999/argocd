@@ -19,6 +19,7 @@ spec:
         releaseName: ingress
         valueFiles:
           - $values/ingress/values.yaml
+          - $values/ingress/values-local.yaml
     - repoURL: https://github.com/juanpa1999/helm-chart.git
       targetRevision: main
       ref: values
