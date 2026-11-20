@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 ARGOCD_VERSION="${ARGOCD_VERSION:-stable}"   # o un tag fijo, ej. v2.13.1
-APP_NAMESPACE="sensores"
+APP_NAMESPACE="default"
 
 # 0. Protección: no instalar en un cluster que no sea el local
 CONTEXT="$(kubectl config current-context)"

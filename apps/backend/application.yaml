@@ -11,23 +11,23 @@ metadata:
 spec:
   project: default
   sources:
-    - repoURL: https://juanpa1999.github.io/helm-chart
-      chart: backend
-      targetRevision: "*"  # siempre la última versión publicada (semver)
-      helm:
-        releaseName: backend
-        valueFiles:
-          - $values/backend/values.yaml
-          - $values/backend/values-local.yaml
-    - repoURL: https://github.com/juanpa1999/helm-chart.git
-      targetRevision: main
-      ref: values
+  - repoURL: https://juanpa1999.github.io/helm-chart
+    chart: backend
+    targetRevision: "*" # siempre la última versión publicada (semver)
+    helm:
+      releaseName: backend
+      valueFiles:
+      - $values/backend/values.yaml
+      - $values/backend/values-local.yaml
+  - repoURL: https://github.com/juanpa1999/helm-chart.git
+    targetRevision: main
+    ref: values
   destination:
     server: https://kubernetes.default.svc
-    namespace: sensores
+    namespace: default
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true
+    - CreateNamespace=true

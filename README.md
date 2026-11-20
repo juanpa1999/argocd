@@ -35,7 +35,7 @@ The target cluster is **k3s / k3d**, with **Traefik** as ingress controller
    │ wave 0 │ wave 1    │ wave 2     │ wave 3    │ ◄── $values/apps/<app>/values.yaml (git)
    └───┬────┴─────┬─────┴─────┬──────┴─────┬─────┘
        ▼          ▼           ▼            ▼
-                 namespace "sensores"
+                 namespace "default"
 
                   Browser → http://pablodevops.store
                                 │
@@ -73,7 +73,7 @@ The target cluster is **k3s / k3d**, with **Traefik** as ingress controller
 ```
 
 - `application.yaml`: chart + **pinned version** (`targetRevision`), `releaseName`,
-  sync-wave, destination namespace `sensores`.
+  sync-wave, destination namespace `default`.
 - `values.yaml`: **only the overrides** over the chart's own `values.yaml`.
 - `root.yaml` only reads `apps/*/application.yaml` (`directory.include`), so the
   `values.yaml` files are never applied as manifests.
@@ -105,7 +105,7 @@ kubectl -n argocd patch configmap argocd-cm --patch-file argocd-cm-patch.yaml
 kubectl apply -f root.yaml
 
 # 4. Test data (user, sensors, readings) — idempotent, after db is Healthy
-kubectl -n sensores exec -i deploy/db-deployment -- \
+kubectl -n default exec -i deploy/db-deployment -- \
   psql -U postgres -d postgres -v ON_ERROR_STOP=1 < sql/seed_pablodevops.sql
 ```
 
@@ -136,9 +136,9 @@ All Applications use `automated` sync with `prune: true` and `selfHeal: true`: m
   `apps/<app>/values.yaml`.
 - **Migrations**: the chart's `post-install,post-upgrade` hook runs as an ArgoCD
   `PostSync` hook, i.e. `alembic upgrade head` on **every** sync of `backend`. If it
-  fails the Job is kept: `kubectl -n sensores logs job/back-deployment-migrate`.
+  fails the Job is kept: `kubectl -n default logs job/back-deployment-migrate`.
 - **`releaseName` of `ingress` must stay `ingress`**: the Traefik Middleware annotation is
-  built as `<namespace>-<release>-strip-api@kubernetescrd` (`sensores-ingress-strip-api`).
+  built as `<namespace>-<release>-strip-api@kubernetescrd` (`default-ingress-strip-api`).
 - **DB persistence** is disabled (`apps/db/values.yaml`): if the pod is recreated, data
   and the seed are lost. Enable `persistence.enabled` to keep them.
 - **Secrets**: `DB_PASSWORD` is a plain value in the backend chart (`extraEnv`) and the DB
@@ -159,7 +159,7 @@ uses the local chart instead of the repo):
 
 ```bash
 helm template backend backend --repo https://juanpa1999.github.io/helm-chart \
-  --version 0.3.0 -n sensores -f apps/backend/values.yaml
+  --version 0.3.0 -n default -f apps/backend/values.yaml
 ```
 
 ## Local access through the Ingress
@@ -191,7 +191,7 @@ Quick checks:
 
 ```bash
 kubectl -n argocd get applications
-kubectl -n sensores get pods,svc,ingress,middleware
+kubectl -n default get pods,svc,ingress,middleware
 curl -i -H 'Host: pablodevops.store' http://127.0.0.1/
 ```
 
@@ -201,7 +201,7 @@ curl -i -H 'Host: pablodevops.store' http://127.0.0.1/
 # No Application has the resources-finalizer, so deleting them does NOT delete the
 # workloads: delete root + the 4 apps, then the namespace.
 kubectl -n argocd delete application root db backend frontend ingress
-kubectl delete namespace sensores
+kubectl delete namespace default
 ```
 
 Remove the `pablodevops.store` line from your hosts file if you no longer need it.
