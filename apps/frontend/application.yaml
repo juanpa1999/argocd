@@ -12,7 +12,7 @@ spec:
   sources:
     - repoURL: https://juanpa1999.github.io/helm-chart
       chart: frontend
-      targetRevision: 0.2.0
+      targetRevision: "*"  # siempre la última versión publicada (semver)
       helm:
         releaseName: frontend
         valueFiles:

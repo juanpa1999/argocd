@@ -14,7 +14,7 @@ spec:
   sources:
     - repoURL: https://juanpa1999.github.io/helm-chart
       chart: ingress
-      targetRevision: 0.1.0
+      targetRevision: "*"  # siempre la última versión publicada (semver)
       helm:
         releaseName: ingress
         valueFiles:
