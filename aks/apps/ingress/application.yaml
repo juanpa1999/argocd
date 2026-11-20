@@ -1,0 +1,35 @@
+# Chart ingress desde el Helm repo publicado (versión fija) + overrides de ./values.yaml.
+# Wave 3: al final, cuando ya existen back-service y front-service.
+# Incluye el Certificate de pablodevops.store (cert-manager); los ClusterIssuers y
+# Traefik los instala Terraform (terraform/azure/application).
+# releaseName debe seguir siendo "ingress": las anotaciones de Middleware de Traefik
+# se arman como <namespace>-<release>-<middleware> (app-ingress-strip-api).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ingress
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: default
+  sources:
+    - repoURL: https://juanpa1999.github.io/helm-chart
+      chart: ingress
+      targetRevision: 0.2.0
+      helm:
+        releaseName: ingress
+        valueFiles:
+          - $values/aks/apps/ingress/values.yaml
+    - repoURL: https://github.com/juanpa1999/argocd.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

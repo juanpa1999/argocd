@@ -1,0 +1,32 @@
+# Chart backend desde el Helm repo publicado (versión fija) + overrides de ./values.yaml.
+# Wave 1: después de la DB. El Job de migración (hook post-install/post-upgrade)
+# ArgoCD lo corre como PostSync.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: backend
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  sources:
+    - repoURL: https://juanpa1999.github.io/helm-chart
+      chart: backend
+      targetRevision: 0.3.4
+      helm:
+        releaseName: backend
+        valueFiles:
+          - $values/aks/apps/backend/values.yaml
+    - repoURL: https://github.com/juanpa1999/argocd.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

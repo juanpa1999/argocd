@@ -1,0 +1,9 @@
+# Overrides para AKS sobre los defaults del chart backend.
+# DB_PASSWORD sale de db-secret (chart secrets, wave -1).
+image:
+  tag: latest   # fija un tag real: ArgoCD no redespliega si el tag no cambia en git
+
+# Origin CORS = origin del frontend tal como lo ve el navegador (https por el TLS del Ingress).
+extraEnv:
+  - name: NGROK
+    value: https://pablodevops.store

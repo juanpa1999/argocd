@@ -1,0 +1,10 @@
+# Overrides para AKS sobre los defaults del chart db (pensados para k3d).
+image:
+  tag: latest   # fija un tag real: ArgoCD no redespliega si el tag no cambia en git
+
+persistence:
+  enabled: true
+  size: 1Gi
+  # local-path (default del chart) solo existe en k3s/k3d. managed-csi = Azure Disk
+  # (StorageClass por defecto de AKS). El PVC tiene helm.sh/resource-policy: keep.
+  storageClass: managed-csi

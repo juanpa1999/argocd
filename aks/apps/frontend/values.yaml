@@ -1,0 +1,9 @@
+# Overrides para AKS sobre los defaults del chart frontend.
+# docker-registry-secret sale del chart secrets (wave -1).
+image:
+  tag: latest   # fija un tag real: ArgoCD no redespliega si el tag no cambia en git
+
+# https por el TLS del Ingress: con http el navegador bloquea las llamadas (mixed content).
+extraEnv:
+  - name: REACT_APP_API_URL
+    value: https://pablodevops.store/api

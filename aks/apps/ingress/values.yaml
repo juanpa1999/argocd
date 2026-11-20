@@ -1,0 +1,15 @@
+# Overrides para AKS sobre los defaults del chart ingress.
+
+# Debe coincidir con REACT_APP_API_URL (frontend) y NGROK/CORS (backend). El registro A
+# apunta a: terraform -chdir=terraform/azure/application output -raw ingress_public_ip
+host: pablodevops.store
+
+tls:
+  enabled: true
+  secretName: pablodevops-store-tls
+  issuer:
+    # Arranca en staging (sin rate limits) hasta ver el Certificate READY=True y el
+    # flujo funcionando; luego cambia a letsencrypt-prod con un commit.
+    name: letsencrypt-staging
+    kind: ClusterIssuer
+  redirectHttps: true
