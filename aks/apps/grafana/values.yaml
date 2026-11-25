@@ -115,7 +115,13 @@ dashboards:
                   "type": "loki",
                   "uid": "loki"
                 },
-                "query": "label_values(namespace)",
+                "query": {
+                  "refId": "LokiVariableQueryEditor-VariableQuery",
+                  "type": 1,
+                  "label": "namespace",
+                  "stream": ""
+                },
+                "definition": "label_values(namespace)",
                 "refresh": 2,
                 "includeAll": true,
                 "allValue": ".+",
@@ -134,7 +140,13 @@ dashboards:
                   "type": "loki",
                   "uid": "loki"
                 },
-                "query": "label_values({namespace=~\"$namespace\"}, app)",
+                "query": {
+                  "refId": "LokiVariableQueryEditor-VariableQuery",
+                  "type": 1,
+                  "label": "app",
+                  "stream": "{namespace=~\"$namespace\"}"
+                },
+                "definition": "label_values({namespace=~\"$namespace\"}, app)",
                 "refresh": 2,
                 "includeAll": true,
                 "allValue": ".*",
@@ -153,7 +165,13 @@ dashboards:
                   "type": "loki",
                   "uid": "loki"
                 },
-                "query": "label_values({namespace=~\"$namespace\", app=~\"$app\"}, pod)",
+                "query": {
+                  "refId": "LokiVariableQueryEditor-VariableQuery",
+                  "type": 1,
+                  "label": "pod",
+                  "stream": "{namespace=~\"$namespace\", app=~\"$app\"}"
+                },
+                "definition": "label_values({namespace=~\"$namespace\", app=~\"$app\"}, pod)",
                 "refresh": 2,
                 "includeAll": true,
                 "allValue": ".*",
