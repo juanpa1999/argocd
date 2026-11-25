@@ -1,6 +1,6 @@
 -- Seed de datos de prueba para el backend (PostgreSQL).
 -- Requiere que el esquema ya exista (alembic upgrade head -> migrations/versions/9870790feabf_gen_db.py).
--- Idempotente: se puede correr varias veces sin duplicar usuario ni sensores.
+-- Idempotente: se puede correr varias veces sin duplicar usuario ni default.
 --
 -- Uso (Kubernetes, desde la raíz del repo; lo corre up.sh):
 --   kubectl exec -i deploy/db-deployment -- psql -U postgres -d postgres -v ON_ERROR_STOP=1 < sql/seed_pablodevops.sql
@@ -23,9 +23,9 @@ ON CONFLICT (username) DO UPDATE
         status    = EXCLUDED.status,
         user_role = EXCLUDED.user_role;
 
--- 2) Sensores
+-- 2) default
 -- Las lecturas referencian sensors.sensor_number (no sensors.id), y los managers
--- solo aceptan lecturas de sensores con status = 'active'.
+-- solo aceptan lecturas de default con status = 'active'.
 INSERT INTO sensors (sensor_number, sensor_location, status, creation_date)
 VALUES
     (101, 'Bodega A - Temperatura', 'active',   CURRENT_DATE),
@@ -37,7 +37,7 @@ ON CONFLICT (sensor_number) DO NOTHING;
 
 -- 3) Lecturas: una cada hora durante las últimas 24 h, en hora de Bogotá
 -- (igual que los managers, que usan America/Bogota).
--- Se eliminan antes las lecturas de estos sensores para que el seed sea repetible.
+-- Se eliminan antes las lecturas de estos default para que el seed sea repetible.
 DELETE FROM temperature_sensors WHERE sensor_id IN (101, 201);
 DELETE FROM humidity_sensors    WHERE sensor_id IN (102, 201);
 DELETE FROM weight_sensors      WHERE sensor_id IN (103, 201);

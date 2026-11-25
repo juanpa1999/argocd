@@ -1,0 +1,108 @@
+# Overrides para AKS sobre los defaults del chart grafana-community/grafana.
+#
+# Password de admin: NUNCA adminPassword vacío con ArgoCD. El chart genera uno
+# aleatorio en cada render -> cambia checksum/secret -> selfHeal reinicia el pod
+# en cada refresh. Aquí sale de Key Vault (secreto grafana-admin-password) vía el
+# ExternalSecret de extraObjects. Cargarlo ANTES del primer sync:
+#   read -rs GF_PASS && az keyvault secret set --vault-name <kv> \
+#     --name grafana-admin-password --value "$GF_PASS" >/dev/null; unset GF_PASS
+admin:
+  existingSecret: grafana-admin
+  userKey: admin-user
+  passwordKey: admin-password
+
+# Sin PVC: datasources y dashboards son código (abajo). Lo que se cree a mano en
+# la UI se pierde al recrear el pod -> expórtalo a JSON y provisiónalo aquí.
+persistence:
+  enabled: false
+
+# Pods de `helm test`: ArgoCD no los usa.
+testFramework:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+
+# Acceso: kubectl -n app port-forward svc/grafana 3000:80 -> http://localhost:3000
+service:
+  type: ClusterIP
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        uid: prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus-server.monitoring.svc.cluster.local
+        isDefault: true
+
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: default
+        orgId: 1
+        folder: Kubernetes
+        type: file
+        disableDeletion: true
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+
+# Descargados de grafana.com al arrancar (init container, requiere salida a internet).
+dashboards:
+  default:
+    node-exporter-full:
+      gnetId: 1860
+      revision: 37
+      datasource: Prometheus
+    k8s-views-global:
+      gnetId: 15757
+      revision: 43
+      datasource: Prometheus
+    k8s-views-pods:
+      gnetId: 15760
+      revision: 36
+      datasource: Prometheus
+
+# ExternalSecret -> Secret grafana-admin (admin-user / admin-password) usando el
+# SecretStore azure-keyvault que Terraform crea en el namespace "app".
+# El chart pasa extraObjects por `tpl`: las llaves de la plantilla de ESO van
+# escapadas ({{ "{{" }} … {{ "}}" }}) para que Helm las deje literales.
+# Campos con default del CRD declarados explícitamente para evitar drift en ArgoCD.
+extraObjects:
+  - apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      name: grafana-admin
+      annotations:
+        argocd.argoproj.io/sync-wave: "-1"
+    spec:
+      refreshInterval: 1h
+      secretStoreRef:
+        kind: SecretStore
+        name: azure-keyvault
+      target:
+        name: grafana-admin
+        creationPolicy: Owner
+        deletionPolicy: Retain
+        template:
+          engineVersion: v2
+          mergePolicy: Replace
+          type: Opaque
+          data:
+            admin-user: admin
+            admin-password: '{{ "{{" }} .password {{ "}}" }}'
+      data:
+        - secretKey: password
+          remoteRef:
+            key: grafana-admin-password
+            conversionStrategy: Default
+            decodingStrategy: None
+            metadataPolicy: None

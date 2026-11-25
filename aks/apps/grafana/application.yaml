@@ -1,0 +1,37 @@
+# Grafana (chart upstream grafana-community/grafana, versión fija; el antiguo
+# grafana/grafana está deprecado) + overrides de ./values.yaml.
+# Wave 5: después de Prometheus (su datasource).
+#
+# Namespace "app" (no "monitoring") a propósito: el password de admin sale de
+# Key Vault vía External Secrets, y el único SecretStore federado
+# (azure-keyvault + SA eso-keyvault) vive en "app". Moverlo a "monitoring"
+# requiere otro federated credential en terraform/azure/application.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  project: default
+  sources:
+    - repoURL: https://grafana-community.github.io/helm-charts
+      chart: grafana
+      targetRevision: 14.6.0
+      helm:
+        releaseName: grafana
+        valueFiles:
+          - $values/aks/apps/grafana/values.yaml
+    - repoURL: https://github.com/juanpa1999/argocd.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

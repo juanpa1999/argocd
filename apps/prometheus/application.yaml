@@ -1,0 +1,33 @@
+# Prometheus (chart upstream prometheus-community/prometheus, versión fija) +
+# overrides de ./values.yaml de ESTE repo (las apps propias leen sus values del
+# repo helm-chart; los charts de terceros no viven allí).
+# Wave 4: después de la app (db 0 … ingress 3).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  project: default
+  sources:
+  - repoURL: https://prometheus-community.github.io/helm-charts
+    chart: prometheus
+    targetRevision: 30.0.1
+    helm:
+      releaseName: prometheus
+      valueFiles:
+      - $values/apps/prometheus/values.yaml
+  - repoURL: https://github.com/juanpa1999/argocd.git
+    targetRevision: main
+    ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

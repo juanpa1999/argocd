@@ -1,0 +1,25 @@
+# Overrides para k3d/k3s local sobre los defaults del chart prometheus-community/prometheus.
+# Grafana (apps/grafana) lo consume en http://prometheus-server.monitoring.svc.cluster.local
+
+server:
+  retention: 2d
+  persistentVolume:
+    enabled: true
+    size: 2Gi          # StorageClass local-path de k3s
+  resources:
+    requests:
+      cpu: 50m
+      memory: 192Mi
+    limits:
+      memory: 512Mi
+
+alertmanager:
+  enabled: false
+prometheus-pushgateway:
+  enabled: false
+
+# En k3d (nodos = contenedores Docker, sobre todo en Docker Desktop/macOS) el
+# montaje de / del host no es "shared" y node-exporter falla al arrancar.
+prometheus-node-exporter:
+  hostRootFsMount:
+    enabled: false

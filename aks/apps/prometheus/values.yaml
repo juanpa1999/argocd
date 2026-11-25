@@ -1,0 +1,41 @@
+# Overrides para AKS sobre los defaults del chart prometheus-community/prometheus.
+# Grafana (aks/apps/grafana) lo consume como datasource en:
+#   http://prometheus-server.monitoring.svc.cluster.local
+# (releaseName "prometheus" -> Service "prometheus-server", puerto 80).
+
+server:
+  retention: 7d
+  persistentVolume:
+    enabled: true
+    size: 8Gi          # StorageClass por defecto de AKS (managed-csi)
+  # Nodo único Standard_B2s (4 GiB) compartido con toda la plataforma: requests
+  # bajos y límite de memoria para que Prometheus no tumbe a la app.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 768Mi
+
+# No se usan todavía: ahorran memoria. Para alertas, activa alertmanager y
+# configura sus receivers (ver README, sección Monitoreo).
+alertmanager:
+  enabled: false
+prometheus-pushgateway:
+  enabled: false
+
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
