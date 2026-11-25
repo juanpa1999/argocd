@@ -1,0 +1,33 @@
+# Loki (chart upstream grafana-community/loki, versión fija; el grafana/loki
+# actual es el de Grafana Enterprise Logs) + overrides de ./values.yaml.
+# Monolítico con PVC: base de datos de logs para Grafana. Los logs los empuja Alloy.
+# Wave 6: después de Prometheus/Grafana; nunca bloquea a la app (waves 0-3).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  project: default
+  sources:
+    - repoURL: https://grafana-community.github.io/helm-charts
+      chart: loki
+      targetRevision: 21.6.0
+      helm:
+        releaseName: loki
+        valueFiles:
+          - $values/aks/apps/loki/values.yaml
+    - repoURL: https://github.com/juanpa1999/argocd.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -41,6 +41,12 @@ datasources:
         access: proxy
         url: http://prometheus-server.monitoring.svc.cluster.local
         isDefault: true
+      # Logs (aks/apps/loki, alimentado por aks/apps/alloy).
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://loki.monitoring.svc.cluster.local:3100
 
 dashboardProviders:
   dashboardproviders.yaml:
@@ -54,6 +60,14 @@ dashboardProviders:
         editable: true
         options:
           path: /var/lib/grafana/dashboards/default
+      - name: logs
+        orgId: 1
+        folder: Logs
+        type: file
+        disableDeletion: true
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/logs
 
 # Descargados de grafana.com al arrancar (init container, requiere salida a internet).
 dashboards:
@@ -70,6 +84,281 @@ dashboards:
       gnetId: 15760
       revision: 36
       datasource: Prometheus
+  # Dashboard propio de logs (Loki): filtros namespace / app / pod + búsqueda de texto,
+  # volumen por app, conteo de errores, logs y eventos de Kubernetes.
+  # Definido aquí (no descargado) porque usa las etiquetas que pone Alloy.
+  # "All" en namespace = ".+" (Loki exige al menos un matcher no vacío).
+  logs:
+    app-logs:
+      json: |
+        {
+          "uid": "app-logs",
+          "title": "Logs de la aplicación",
+          "tags": [
+            "logs",
+            "loki"
+          ],
+          "timezone": "browser",
+          "schemaVersion": 39,
+          "refresh": "30s",
+          "time": {
+            "from": "now-1h",
+            "to": "now"
+          },
+          "templating": {
+            "list": [
+              {
+                "name": "namespace",
+                "label": "Namespace",
+                "type": "query",
+                "datasource": {
+                  "type": "loki",
+                  "uid": "loki"
+                },
+                "query": "label_values(namespace)",
+                "refresh": 2,
+                "includeAll": true,
+                "allValue": ".+",
+                "multi": false,
+                "sort": 1,
+                "current": {
+                  "text": "All",
+                  "value": "$__all"
+                }
+              },
+              {
+                "name": "app",
+                "label": "App",
+                "type": "query",
+                "datasource": {
+                  "type": "loki",
+                  "uid": "loki"
+                },
+                "query": "label_values({namespace=~\"$namespace\"}, app)",
+                "refresh": 2,
+                "includeAll": true,
+                "allValue": ".*",
+                "multi": false,
+                "sort": 1,
+                "current": {
+                  "text": "All",
+                  "value": "$__all"
+                }
+              },
+              {
+                "name": "pod",
+                "label": "Pod",
+                "type": "query",
+                "datasource": {
+                  "type": "loki",
+                  "uid": "loki"
+                },
+                "query": "label_values({namespace=~\"$namespace\", app=~\"$app\"}, pod)",
+                "refresh": 2,
+                "includeAll": true,
+                "allValue": ".*",
+                "multi": false,
+                "sort": 1,
+                "current": {
+                  "text": "All",
+                  "value": "$__all"
+                }
+              },
+              {
+                "name": "search",
+                "label": "Buscar (regex, sin mayúsculas)",
+                "type": "textbox",
+                "query": "",
+                "current": {
+                  "text": "",
+                  "value": ""
+                }
+              }
+            ]
+          },
+          "panels": [
+            {
+              "id": 1,
+              "type": "timeseries",
+              "title": "Volumen de logs por app",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "gridPos": {
+                "h": 8,
+                "w": 16,
+                "x": 0,
+                "y": 0
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "loki",
+                    "uid": "loki"
+                  },
+                  "expr": "sum by (app) (count_over_time({namespace=~\"$namespace\", app=~\"$app\", pod=~\"$pod\", job!=\"kubernetes-events\"} |~ \"(?i)$search\" [$__auto]))",
+                  "legendFormat": "{{app}}"
+                }
+              ],
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "custom": {
+                    "drawStyle": "bars",
+                    "fillOpacity": 60,
+                    "stacking": {
+                      "mode": "normal"
+                    }
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              }
+            },
+            {
+              "id": 2,
+              "type": "stat",
+              "title": "Líneas con error (rango seleccionado)",
+              "description": "Líneas que contienen error, exception, traceback, fatal o panic.",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "gridPos": {
+                "h": 8,
+                "w": 8,
+                "x": 16,
+                "y": 0
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "loki",
+                    "uid": "loki"
+                  },
+                  "queryType": "instant",
+                  "expr": "sum(count_over_time({namespace=~\"$namespace\", app=~\"$app\", pod=~\"$pod\", job!=\"kubernetes-events\"} |~ \"(?i)(error|exception|traceback|fatal|panic)\" [$__range]))"
+                }
+              ],
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "0",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "orange",
+                        "value": 1
+                      },
+                      {
+                        "color": "red",
+                        "value": 50
+                      }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                }
+              }
+            },
+            {
+              "id": 3,
+              "type": "logs",
+              "title": "Logs",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "gridPos": {
+                "h": 20,
+                "w": 24,
+                "x": 0,
+                "y": 8
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "loki",
+                    "uid": "loki"
+                  },
+                  "expr": "{namespace=~\"$namespace\", app=~\"$app\", pod=~\"$pod\", job!=\"kubernetes-events\"} |~ \"(?i)$search\"",
+                  "maxLines": 1000
+                }
+              ],
+              "options": {
+                "showTime": true,
+                "showLabels": false,
+                "showCommonLabels": false,
+                "wrapLogMessage": true,
+                "prettifyLogMessage": false,
+                "enableLogDetails": true,
+                "dedupStrategy": "none",
+                "sortOrder": "Descending"
+              }
+            },
+            {
+              "id": 4,
+              "type": "logs",
+              "title": "Eventos de Kubernetes",
+              "description": "OOMKilled, BackOff, FailedScheduling, Pulled… (loki.source.kubernetes_events en Alloy).",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "gridPos": {
+                "h": 10,
+                "w": 24,
+                "x": 0,
+                "y": 28
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "loki",
+                    "uid": "loki"
+                  },
+                  "expr": "{job=\"kubernetes-events\"} |~ \"(?i)$search\"",
+                  "maxLines": 500
+                }
+              ],
+              "options": {
+                "showTime": true,
+                "wrapLogMessage": true,
+                "enableLogDetails": true,
+                "dedupStrategy": "none",
+                "sortOrder": "Descending"
+              }
+            }
+          ]
+        }
 
 # ExternalSecret -> Secret grafana-admin (admin-user / admin-password) usando el
 # SecretStore azure-keyvault que Terraform crea en el namespace "app".

@@ -1,0 +1,33 @@
+# Grafana Alloy (chart upstream grafana/alloy, versión fija) + overrides de ./values.yaml.
+# DaemonSet que lee los logs de todos los pods y los eventos de K8s y los envía a Loki.
+# Reemplaza a Promtail (deprecado).
+# Wave 7: después de Loki, su destino.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alloy
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+spec:
+  project: default
+  sources:
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: alloy
+      targetRevision: 1.16.0
+      helm:
+        releaseName: alloy
+        valueFiles:
+          - $values/aks/apps/alloy/values.yaml
+    - repoURL: https://github.com/juanpa1999/argocd.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

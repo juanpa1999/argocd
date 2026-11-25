@@ -1,0 +1,78 @@
+# Overrides para AKS sobre los defaults del chart grafana-community/loki.
+# Loki = base de datos de LOGS (como Prometheus lo es de métricas). No recolecta
+# nada por sí mismo: Alloy (aks/apps/alloy) le empuja los logs y Grafana los consulta.
+#
+# Endpoint interno (Service "loki", puerto 3100):
+#   push  (Alloy):   http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+#   query (Grafana): http://loki.monitoring.svc.cluster.local:3100
+
+# Un solo proceso con todos los componentes de Loki, guardando en disco (PVC).
+# Suficiente para decenas de GB/día; no requiere object storage.
+deploymentMode: Monolithic
+
+loki:
+  # Un solo tenant: sin esto Grafana/Alloy tendrían que mandar X-Scope-OrgID.
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+  # Retención: el compactor borra lo que tenga más de 7 días (igual que Prometheus).
+  limits_config:
+    retention_period: 168h
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h
+    max_cache_freshness_per_query: 10m
+    split_queries_by_interval: 15m
+    query_timeout: 300s
+    volume_enabled: true
+  compactor:
+    retention_enabled: true
+    delete_request_store: filesystem
+    working_directory: /var/loki/compactor
+
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    size: 8Gi           # StorageClass por defecto de AKS (managed-csi)
+  # Nodo único Standard_B2s compartido con toda la plataforma.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+# Los demás modos (SimpleScalable/Distributed) quedan en 0 réplicas.
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
+# Caches memcached: por defecto reservan varios GiB de RAM. No caben en un B2s.
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+
+# Gateway nginx: solo útil con multi-tenant / auth. Grafana y Alloy van directo al Service "loki".
+gateway:
+  enabled: false
+
+# Canary + test de Helm: generan tráfico sintético para probar Loki; ArgoCD no los usa.
+lokiCanary:
+  enabled: false
+test:
+  enabled: false

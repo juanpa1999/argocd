@@ -1,0 +1,91 @@
+# Overrides para AKS sobre los defaults del chart grafana/alloy.
+# Alloy = el AGENTE que recolecta logs y se los empuja a Loki (aks/apps/loki).
+#
+# Cómo obtiene los logs: todo contenedor que escribe a stdout/stderr queda en el
+# kubelet; Alloy los lee por la API de Kubernetes (loki.source.kubernetes, igual que
+# `kubectl logs -f`), sin montar /var/log del nodo ni correr privilegiado.
+# DaemonSet: un pod por nodo, cada uno solo lee los pods de SU nodo
+# (HOSTNAME = spec.nodeName, lo inyecta el chart).
+
+controller:
+  type: daemonset
+
+alloy:
+  # Por defecto el chart solo permite componentes GA; todos los de abajo lo son.
+  stabilityLevel: generally-available
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      memory: 192Mi
+  configMap:
+    create: true
+    content: |
+      // 1. Descubrir los pods de este nodo.
+      discovery.kubernetes "pods" {
+        role = "pod"
+        selectors {
+          role  = "pod"
+          field = "spec.nodeName=" + sys.env("HOSTNAME")
+        }
+      }
+
+      // 2. Etiquetas con las que luego filtras en Grafana:
+      //    {namespace="app", app="backend"}, {pod="..."}, {container="..."}.
+      //    Pocas y de baja cardinalidad: en Loki cada combinación es un stream.
+      discovery.relabel "pods" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+        // app: label "app" de tus charts (db/backend/frontend) o, si existe,
+        // app.kubernetes.io/name (charts de terceros: grafana, loki, traefik…).
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app"]
+          regex         = "(.+)"
+          target_label  = "app"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          regex         = "(.+)"
+          target_label  = "app"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
+          separator     = "/"
+          target_label  = "job"
+        }
+      }
+
+      // 3. Seguir los logs (stdout/stderr) de esos contenedores.
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pods.output
+        forward_to = [loki.write.default.receiver]
+      }
+
+      // 4. Eventos de Kubernetes (OOMKilled, FailedScheduling, BackOff…) como logs.
+      //    En un clúster de varios nodos cada pod del DaemonSet los enviaría
+      //    duplicados; AKS aquí tiene 1 nodo.
+      loki.source.kubernetes_events "events" {
+        job_name   = "kubernetes-events"
+        log_format = "logfmt"
+        forward_to = [loki.write.default.receiver]
+      }
+
+      // 5. Enviar a Loki.
+      loki.write "default" {
+        endpoint {
+          url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+        }
+      }
