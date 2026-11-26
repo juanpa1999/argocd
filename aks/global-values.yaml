@@ -1,0 +1,28 @@
+# Values globales de AKS: valores que solo conoce Terraform, compartidos por
+# todas las Applications de aks/apps/* (cada una lo lista primero en valueFiles,
+# antes de su propio values.yaml).
+#
+# NINGUNO es secreto (IDs, URLs, nombres). Los valores secretos siguen viviendo
+# solo en Key Vault.
+#
+# Se actualizan A MANO, copiando la salida de:
+#   terraform -chdir=terraform/azure/application output -raw gitops_global_values
+# Vuelve a copiarlos si recreas el cluster, la identidad de ESO o la IP pública.
+#
+# Todo va bajo `global:`. Así los charts upstream con schema estricto (Traefik
+# tiene additionalProperties: false en la raíz) aceptan el archivo, y los charts
+# lo leen como .Values.global.* (Traefik lo hace vía `tpl` en las anotaciones del Service).
+global:
+  azure:
+    # tenantId del SecretStore (app-secrets).
+    tenantId: "TU_TENANT_ID"
+    # vaultUrl del SecretStore (app-secrets).
+    keyVaultUrl: "https://TU_KEY_VAULT.vault.azure.net/"
+    # Client ID de la identidad de ESO -> anotación del ServiceAccount eso-keyvault.
+    esoClientId: "TU_ESO_CLIENT_ID"
+    # RG donde vive la IP pública del ingress (el de bootstrap, no el MC_*) -> traefik.
+    resourceGroup: "TU_RESOURCE_GROUP"
+    # Nombre de la IP pública estática -> traefik (azure-pip-name).
+    ingressPublicIpName: "TU_PIP_NAME"
+  # Email de la cuenta ACME de Let's Encrypt -> cluster-issuers.
+  letsencryptEmail: "TU_EMAIL"

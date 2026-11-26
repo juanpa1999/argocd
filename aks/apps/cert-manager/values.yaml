@@ -1,0 +1,6 @@
+# Overrides para AKS sobre los defaults del chart jetstack/cert-manager.
+crds:
+  enabled: true
+  # helm.sh/resource-policy: keep en las CRDs: aunque se borre el release, no se
+  # borran las CRDs (ni con ellas todos los Certificate del cluster).
+  keep: true

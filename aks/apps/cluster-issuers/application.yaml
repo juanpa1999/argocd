@@ -1,0 +1,35 @@
+# ClusterIssuers de Let's Encrypt (chart propio cluster-issuers del Helm repo,
+# versión fija) + global-values (email) + ./values.yaml.
+# Wave -2: después de cert-manager (-3), que trae la CRD ClusterIssuer.
+# name == releaseName == "cluster-issuers" (el mismo del helm_release de Terraform).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cluster-issuers
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  project: default
+  sources:
+    - repoURL: https://juanpa1999.github.io/helm-chart
+      chart: cluster-issuers
+      targetRevision: 0.1.0
+      helm:
+        releaseName: cluster-issuers
+        valueFiles:
+          - $values/aks/global-values.yaml
+          - $values/aks/apps/cluster-issuers/values.yaml
+    - repoURL: https://github.com/juanpa1999/argocd.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      # Por si el dry-run corre antes de que exista la CRD ClusterIssuer.
+      - SkipDryRunOnMissingResource=true

@@ -1,0 +1,38 @@
+# External Secrets Operator (chart upstream, versión fija) + global-values + ./values.yaml.
+# Wave -3: operador con CRDs; tiene que estar Healthy antes de app-secrets (-2).
+# La identidad de Azure, el federated credential y el rol en Key Vault siguen en
+# Terraform (terraform/azure/application/external_secrets.tf): son recursos de Azure.
+# name == releaseName == "external-secrets" (el mismo del helm_release de Terraform)
+# para que ArgoCD adopte lo que ya existe.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-secrets
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  project: default
+  sources:
+    - repoURL: https://charts.external-secrets.io
+      chart: external-secrets
+      targetRevision: 2.12.0
+      helm:
+        releaseName: external-secrets
+        valueFiles:
+          - $values/aks/global-values.yaml
+          - $values/aks/apps/external-secrets/values.yaml
+    - repoURL: https://github.com/juanpa1999/argocd.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-secrets
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # Las CRDs de ESO superan el límite de la anotación last-applied del apply clásico.
+      - ServerSideApply=true

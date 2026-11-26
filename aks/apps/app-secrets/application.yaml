@@ -1,0 +1,48 @@
+# ServiceAccount federado + SecretStore + ExternalSecrets (chart propio
+# app-secrets del Helm repo, versión fija) + global-values (tenantId, clientId,
+# vaultUrl) + ./values.yaml.
+# Wave -2: después de external-secrets (-3) y antes de db (0). ArgoCD evalúa la
+# salud de los ExternalSecret, así que esta Application solo queda Healthy
+# cuando db-secret y docker-registry-secret existen. Eso reemplaza el hook
+# wait-for-secrets que bloqueaba el terraform apply.
+#
+# Namespace "app" + ServiceAccount "eso-keyvault": el federated credential de
+# Terraform confía solo en system:serviceaccount:app:eso-keyvault.
+# name == releaseName == "app-secrets" (el mismo del helm_release de Terraform).
+#
+# Prerrequisito: db-password y docker-registry-token cargados en Key Vault
+# (terraform -chdir=terraform/azure/bootstrap output -raw key_vault_set_secrets_commands).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-secrets
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  project: default
+  sources:
+    - repoURL: https://juanpa1999.github.io/helm-chart
+      chart: app-secrets
+      targetRevision: 0.1.0
+      helm:
+        releaseName: app-secrets
+        valueFiles:
+          - $values/aks/global-values.yaml
+          - $values/aks/apps/app-secrets/values.yaml
+    - repoURL: https://github.com/juanpa1999/argocd.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # Por si el dry-run corre antes de que existan las CRDs de ESO.
+      - SkipDryRunOnMissingResource=true
+      # Server-side diff: ignora los campos que el CRD rellena por defecto (sin drift).
+      - ServerSideApply=true

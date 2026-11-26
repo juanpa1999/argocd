@@ -1,0 +1,4 @@
+# Overrides para AKS sobre los defaults del chart app-secrets.
+# tenantId / esoClientId / keyVaultUrl salen de ../../global-values.yaml.
+dockerRegistry:
+  username: jpcc141999

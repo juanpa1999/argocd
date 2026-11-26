@@ -1,0 +1,3 @@
+# Overrides para AKS sobre los defaults del chart cluster-issuers.
+# El email sale de ../../global-values.yaml (global.letsencryptEmail).
+ingressClassName: traefik

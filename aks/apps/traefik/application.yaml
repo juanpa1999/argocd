@@ -1,0 +1,39 @@
+# Traefik (chart upstream, versión fija) + global-values + ./values.yaml.
+# Wave -3: ingress controller + CRDs traefik.io (Middleware que usa el chart ingress).
+# La IP pública estática y el permiso Network Contributor del AKS siguen en
+# Terraform (terraform/azure/application/traefik.tf); aquí solo se referencian
+# por nombre desde global-values.
+# name == releaseName == "traefik" (el mismo del helm_release de Terraform) para
+# que ArgoCD adopte el Service LoadBalancer existente sin recrearlo (la IP no cambia).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: traefik
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  project: default
+  sources:
+    - repoURL: https://traefik.github.io/charts
+      chart: traefik
+      targetRevision: 42.4.1
+      helm:
+        releaseName: traefik
+        valueFiles:
+          - $values/aks/global-values.yaml
+          - $values/aks/apps/traefik/values.yaml
+    - repoURL: https://github.com/juanpa1999/argocd.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: traefik
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # CRDs traefik.io grandes: mismo motivo que cert-manager / external-secrets.
+      - ServerSideApply=true

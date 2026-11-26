@@ -1,0 +1,23 @@
+# Overrides para AKS sobre los defaults del chart traefik/traefik.
+#
+# Defaults del chart que el chart `ingress` da por hecho: entrypoints
+# web (:80) / websecure (:443), IngressClass "traefik" por defecto, CRDs
+# traefik.io (Middleware) y publishedService (pone la IP en el status de los
+# Ingress; sin eso ArgoCD los deja en Progressing para siempre).
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+  name: traefik
+
+providers:
+  kubernetesIngress:
+    publishedService:
+      enabled: true
+
+# El chart pasa las anotaciones del Service por `tpl`, así que pueden leer
+# ../../global-values.yaml. La IP la crea Terraform (no Azure al vuelo): sobrevive
+# a un reinstall del chart y el registro A de pablodevops.store no cambia.
+service:
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-resource-group: "{{ .Values.global.azure.resourceGroup }}"
+    service.beta.kubernetes.io/azure-pip-name: "{{ .Values.global.azure.ingressPublicIpName }}"
